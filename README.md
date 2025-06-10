@@ -1,4 +1,5 @@
-# CRCL: Conservative-Radical Complementary Learning for Class-incremental Medical Image Analysis with Pre-trained Foundation Models
+# CRCL: Class-incremental Medical Image Analysis with Pre-trained Foundation Models
+Conservative-Radical Complementary Learning for Class-incremental Medical Image Analysis with Pre-trained Foundation Models
 This repository contains the official implementation of the CRCL / CRCL+ methods introduced in our paper:
 > [Paper Title]  
 > Authors: [Your Name(s)]  
