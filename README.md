@@ -25,7 +25,7 @@ If you find our work useful in your research, please cite:
 ```bibtex
 @inproceedings{wu2025crcl,
   title     = {Conservative-Radical Complementary Learning for Class-incremental Medical Image Analysis with Pre-trained Foundation Models},
-  author    = {Wu, Xinyao (Yoyo) and Xu, Zhe and Lu, Donghuan and Sun, Jinghan and Liu, Hong and Shakil, Sadia and Ma, Jiawei and Zheng, Yefeng and Tong, Raymond},
+  author    = {Wu*, Xinyao and Xu*, Zhe and Lu, Donghuan and Sun, Jinghan and Liu, Hong and Shakil, Sadia and Ma, Jiawei and Zheng, Yefeng and Tong, Raymond},
   booktitle = {International Conference on Medical Image Computing and Computer-Assisted Intervention (MICCAI)},
   year      = {2025}
 }
