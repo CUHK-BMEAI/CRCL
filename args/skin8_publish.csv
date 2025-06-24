@@ -1,0 +1,2 @@
+ID,dataset,shuffle,init_cls,increment,model_name,convnet_type,device,seed,batch_size,tuned_epoch,body_lr,head_lr,weight_decay,min_lr,use_RP,M,use_input_norm,follow_epoch,lambda,merge_result
+1,skin8,True,2,2,adapter,pretrained_vit_b16_224_adapter,0,1993,48,20,0.01,0.01,0.0005,0.0,True,3840,False,15,50,1
