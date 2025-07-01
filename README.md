@@ -1,4 +1,4 @@
-# CRCL: Class-incremental Medical Image Analysis with Pre-trained Foundation Models
+# CRCL for Class-incremental Medical Image Analysis with Pre-trained Foundation Models
 This repository contains the official implementation of the paper:
 
 MICCAI 2025: Conservative-Radical Complementary Learning for Class-incremental Medical Image Analysis with Pre-trained Foundation Models
