@@ -13,7 +13,7 @@ Class-incremental learning (CIL) in medical image-guided diagnosis requires mode
 - timm == 0.6.5
 
 ## Datasets
-We follow [RanPAC](https://github.com/McDonnell-Research-Lab/RanPAC/tree/main), [ACL](https://github.com/GiantJun/CL_Pytorch/tree/main) settings to use the same data index_list for training.
+We follow [ACL](https://github.com/GiantJun/CL_Pytorch/tree/main) and [RanPAC](https://github.com/McDonnell-Research-Lab/RanPAC/tree/main) settings to use the same data index_list for training.
 
 ## Running scripts
 ```bash
