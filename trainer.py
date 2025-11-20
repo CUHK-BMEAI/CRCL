@@ -8,7 +8,10 @@ import torch
 
 from utils.data_manager import DataManager
 from utils.toolkit import count_parameters
+
+# Pick model
 from CRCL import Learner
+#from BiCRCL import Learner
 
 def train(args):
     seed_list = copy.deepcopy(args["seed"])
