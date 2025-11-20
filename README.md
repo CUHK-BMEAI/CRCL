@@ -22,8 +22,8 @@ We follow [ACL](https://github.com/GiantJun/CL_Pytorch/tree/main) to use the sam
 $ python main.py -d skin8
 - for -d choose from 'medmnist', 'colon', 'blood', 'covid'
 ```
-### 2. Select the Model (CRCL or BiCRCL)
-- To switch between the CRCL and BiCRCL learners, edit the import line in trainer.py: from CRCL/BiCRCL import Learner
+### 2. Select the Model (CRCL or Bi-CRCL)
+- To switch between the CRCL and Bi-CRCL learners, edit the import line in trainer.py: from CRCL/BiCRCL import Learner
 
 
 ## Citation 
