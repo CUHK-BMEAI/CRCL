@@ -140,7 +140,7 @@ class BaseLearner(object):
 
         for rapid_name, rapid_param in rapid_state_dict.items():
             if f"adaptmlp.adapters.{latest_adapter_id}." not in rapid_name:
-                continue  # Skip unrelated params
+                continue  
             conservative_name = rapid_name.replace(f"adapters.{latest_adapter_id}", "adapters.0")
 
             if conservative_name in conservative_state_dict:
@@ -265,42 +265,40 @@ class Learner(BaseLearner):
         return ridge
     
     def incremental_train(self, data_manager):
-        with torch.cuda.device(1):
-            self.total_classnum = data_manager.get_total_classnum()
-            self._cur_task += 1
-            self._classes_seen_so_far = self._known_classes + data_manager.get_task_size(self._cur_task)
-
-            ### Set task ID so blocks can route to the right adapter
-            self._network.set_task_id(self._cur_task)
-
-            if self._cur_task == 0:
-                for block in self._network.convnet.blocks:
-                    if hasattr(block, "adaptmlp"):
-                        block.adaptmlp.add_adapter()
-            if self._cur_task > 0:
-                for block_idx, block in enumerate(self._network.convnet.blocks):
-                    if hasattr(block, "adaptmlp"):
-                        # Get the corresponding conservative adapter
-                        source_adapter = self.model_branch1.convnet.blocks[block_idx].adaptmlp.adapters[0]
-                        # Add the adapter to rapid learner, initialized from conservative adapter
-                        block.adaptmlp.add_adapter(source_adapter=source_adapter)
+        self.total_classnum = data_manager.get_total_classnum()
+        self._cur_task += 1
+        self._classes_seen_so_far = self._known_classes + data_manager.get_task_size(self._cur_task)
         
-            if self._cur_task > 0 and self.args['use_RP'] and self.args['M']>0:
-                self._network.fc.weight.data = copy.deepcopy(self.train_fc).to(device='cuda')
-                self._network.update_fc(self._classes_seen_so_far)
-            else:
-                self._network.update_fc(self._classes_seen_so_far) #creates a new head with a new number of classes (if CIL)
-            if self.is_dil == False:
-                logging.info("Starting CIL Task {}".format(self._cur_task+1))
-            logging.info("Learning on classes {}-{}".format(self._known_classes, self._classes_seen_so_far-1))
-            self.class_increments.append([self._known_classes, self._classes_seen_so_far-1])
-            self.train_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._classes_seen_so_far),source="train", mode="train", ) #mode
-            self.train_loader = DataLoader(self.train_dataset, batch_size=int(self._batch_size), shuffle=True, num_workers=num_workers)
-            train_dataset_for_CPs = data_manager.get_dataset(np.arange(self._known_classes, self._classes_seen_so_far),source="train", mode="test", )
-            self.train_loader_for_CPs = DataLoader(train_dataset_for_CPs, batch_size=self._batch_size, shuffle=True, num_workers=num_workers) # 求协方差矩阵和每个类的性质
-            test_dataset = data_manager.get_dataset(np.arange(0, self._classes_seen_so_far), source="test", mode="test" )
-            self.test_loader = DataLoader(test_dataset, batch_size=self._batch_size, shuffle=False, num_workers=num_workers)
-            self._train(self.train_loader, self.test_loader, self.train_loader_for_CPs)
+        self._network.set_task_id(self._cur_task)
+
+        if self._cur_task == 0:
+            for block in self._network.convnet.blocks:
+                if hasattr(block, "adaptmlp"):
+                    block.adaptmlp.add_adapter()
+        if self._cur_task > 0:
+            for block_idx, block in enumerate(self._network.convnet.blocks):
+                if hasattr(block, "adaptmlp"):
+                    # Get the corresponding conservative adapter
+                    source_adapter = self.model_branch1.convnet.blocks[block_idx].adaptmlp.adapters[0]
+                    # Add the adapter to rapid learner, initialized from conservative adapter
+                    block.adaptmlp.add_adapter(source_adapter=source_adapter)
+    
+        if self._cur_task > 0 and self.args['use_RP'] and self.args['M']>0:
+            self._network.fc.weight.data = copy.deepcopy(self.train_fc).to(device='cuda')
+            self._network.update_fc(self._classes_seen_so_far)
+        else:
+            self._network.update_fc(self._classes_seen_so_far) #creates a new head with a new number of classes (if CIL)
+        if self.is_dil == False:
+            logging.info("Starting CIL Task {}".format(self._cur_task+1))
+        logging.info("Learning on classes {}-{}".format(self._known_classes, self._classes_seen_so_far-1))
+        self.class_increments.append([self._known_classes, self._classes_seen_so_far-1])
+        self.train_dataset = data_manager.get_dataset(np.arange(self._known_classes, self._classes_seen_so_far),source="train", mode="train", ) 
+        self.train_loader = DataLoader(self.train_dataset, batch_size=int(self._batch_size), shuffle=True, num_workers=num_workers)
+        train_dataset_for_CPs = data_manager.get_dataset(np.arange(self._known_classes, self._classes_seen_so_far),source="train", mode="test", )
+        self.train_loader_for_CPs = DataLoader(train_dataset_for_CPs, batch_size=self._batch_size, shuffle=True, num_workers=num_workers) 
+        test_dataset = data_manager.get_dataset(np.arange(0, self._classes_seen_so_far), source="test", mode="test" )
+        self.test_loader = DataLoader(test_dataset, batch_size=self._batch_size, shuffle=False, num_workers=num_workers)
+        self._train(self.train_loader, self.test_loader, self.train_loader_for_CPs)
 
     def freeze_backbone(self,is_first_session=False):
         # Freeze the parameters for ViT.
@@ -334,58 +332,57 @@ class Learner(BaseLearner):
 
 
     def _train(self, train_loader, test_loader, train_loader_for_CPs):
-        with torch.cuda.device(1):
-            self._network.to(self._device)
-        
-            if self._cur_task == 0:
-                args_ptm = {}
-                args_ptm['convnet_type'] = self.args['convnet_type'].rpartition("_")[0] # PEFT is not used
-                self.ptm = SimpleVitNet(args_ptm, True).to(self._device)
-                self.ptm.eval()
-            if self._cur_task > 0:
-                if self.args['merge_result']:
-                    self.model_branch1.fc.weight.data = copy.deepcopy(self.train_fc_branch).to(device='cuda')
-                    self.model_branch1.update_fc(self._classes_seen_so_far)
-                    self.model_branch1.eval()
-            
-            if self._cur_task == 0 and self.dil_init==False:
-                self.show_num_params()
-                optimizer = optim.SGD([{'params':self._network.parameters()}], momentum=0.9, lr=self.args['body_lr'],weight_decay=self.weight_decay)
-                scheduler=optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.args['tuned_epoch'], eta_min=self.min_lr)
-                #train the PETL method for the first task:
-                logging.info("Starting PETL training on first task using "+self.args["model_name"]+" method")
-                self._init_train(train_loader, test_loader, optimizer, scheduler)
-
-                if self.args['merge_result']:
-                    self.model_branch1 = copy.deepcopy(self._network).to(self._device)
-
-                if self.args['use_RP'] and self.dil_init==False:
-                    self.setup_RP() 
-                    if self.args['merge_result']:
-                        self.setup_RP_branch()
-                    
-            elif self._cur_task > 0 and self.dil_init==False:
-                if self.args['follow_epoch']:
-                    self.show_num_params()
-                    optimizer = optim.SGD(self._network.parameters(), momentum=0.9, lr=self.args['body_lr'],weight_decay=self.weight_decay)
-                    scheduler=optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.args['tuned_epoch'], eta_min=self.min_lr)
-                    logging.info("Starting PETL training on first task using "+self.args["model_name"]+" method")
-                    self._follow_train(train_loader, test_loader, optimizer, scheduler)
-                    self.update_ema_adapters(self._network, self.model_branch1, self._cur_task, alpha=0.99)
-
-                if self.args['use_RP'] and self.dil_init==False:
-                    self.setup_RP_follow() 
-                    if self.args['merge_result']:
-                        self.setup_RP_follow_branch()
-
-            if self.is_dil and self.dil_init==False:
-                self.dil_init=True
-                self._network.fc.weight.data.fill_(0.0)
-            
-            self.replace_fc(train_loader_for_CPs)
+        self._network.to(self._device)
+    
+        if self._cur_task == 0:
+            args_ptm = {}
+            args_ptm['convnet_type'] = self.args['convnet_type'].rpartition("_")[0] # PEFT is not used
+            self.ptm = SimpleVitNet(args_ptm, True).to(self._device)
+            self.ptm.eval()
+        if self._cur_task > 0:
             if self.args['merge_result']:
-                self.replace_fc_branch(train_loader_for_CPs)
+                self.model_branch1.fc.weight.data = copy.deepcopy(self.train_fc_branch).to(device='cuda')
+                self.model_branch1.update_fc(self._classes_seen_so_far)
+                self.model_branch1.eval()
+        
+        if self._cur_task == 0 and self.dil_init==False:
             self.show_num_params()
+            optimizer = optim.SGD([{'params':self._network.parameters()}], momentum=0.9, lr=self.args['body_lr'],weight_decay=self.weight_decay)
+            scheduler=optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.args['tuned_epoch'], eta_min=self.min_lr)
+            #train the PETL method for the first task:
+            logging.info("Starting PETL training on first task using "+self.args["model_name"]+" method")
+            self._init_train(train_loader, test_loader, optimizer, scheduler)
+
+            if self.args['merge_result']:
+                self.model_branch1 = copy.deepcopy(self._network).to(self._device)
+
+            if self.args['use_RP'] and self.dil_init==False:
+                self.setup_RP() 
+                if self.args['merge_result']:
+                    self.setup_RP_branch()
+                
+        elif self._cur_task > 0 and self.dil_init==False:
+            if self.args['follow_epoch']:
+                self.show_num_params()
+                optimizer = optim.SGD(self._network.parameters(), momentum=0.9, lr=self.args['body_lr'],weight_decay=self.weight_decay)
+                scheduler=optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.args['tuned_epoch'], eta_min=self.min_lr)
+                logging.info("Starting PETL training on first task using "+self.args["model_name"]+" method")
+                self._follow_train(train_loader, test_loader, optimizer, scheduler)
+                self.update_ema_adapters(self._network, self.model_branch1, self._cur_task, alpha=0.99)
+
+            if self.args['use_RP'] and self.dil_init==False:
+                self.setup_RP_follow() 
+                if self.args['merge_result']:
+                    self.setup_RP_follow_branch()
+
+        if self.is_dil and self.dil_init==False:
+            self.dil_init=True
+            self._network.fc.weight.data.fill_(0.0)
+        
+        self.replace_fc(train_loader_for_CPs)
+        if self.args['merge_result']:
+            self.replace_fc_branch(train_loader_for_CPs)
+        self.show_num_params()
     
     def setup_RP_branch(self):
         self.initiated_G=False
@@ -477,7 +474,6 @@ class Learner(BaseLearner):
                     loss_radical = loss_CR
                     loss += loss_radical
                     losses_rad += loss_radical
-                    #print("loss_fa:", loss_fa.item(), "loss_CR:", loss_CR.item())
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -522,7 +518,6 @@ class Learner(BaseLearner):
 
         pred_bcl_ptm = self._network.fc(f_bcl_ptm)["logits"]
         pred_bcl_cur = self.model_branch1.fc(f_bcl_cur)["logits"]
-
         loss_CR = F.cross_entropy(pred_bcl_cur, targets_bcl) 
 
         return loss_fa, loss_CR
