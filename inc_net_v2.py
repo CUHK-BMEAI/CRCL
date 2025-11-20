@@ -206,11 +206,10 @@ class SimpleVitNet(BaseNet):
         self.fc = fc
     
     def set_task_id(self, task_id):
-        """Set task_id for all adapter blocks in the transformer backbone."""
         if hasattr(self.convnet, "blocks"):
             for blk in self.convnet.blocks:
                 if hasattr(blk, "adaptmlp") and hasattr(blk.adaptmlp, "current_id"):
-                    blk.task_id = task_id  # Used during forward
+                    blk.task_id = task_id  
                     blk.adaptmlp.current_id = task_id
 
 
